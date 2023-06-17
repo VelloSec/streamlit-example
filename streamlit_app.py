@@ -2,7 +2,6 @@ import json
 import pandas as pd
 import requests
 import streamlit as st
-import altair as alt
 
 def load_data():
     url = "https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json"
@@ -15,8 +14,8 @@ def load_data():
             obj['tactic'] = [x['phase_name'] for x in obj.get('kill_chain_phases', []) if x['kill_chain_name'] == 'mitre-attack']
             techniques.append(obj)
 
-    data = pd.json_normalize(techniques, 'x_mitre_platforms', ['name', 'description', 'tactic', 'x_mitre_detection', 'x_mitre_mitigations'], record_prefix='platform_')
-    
+    data = pd.json_normalize(techniques)
+
     # Explode the tactic list into multiple rows
     data = data.explode('tactic')
 
@@ -33,12 +32,12 @@ def main():
     data = fetch_and_cache_data()
 
     # Filter options
-    platforms = list(set(data['platform_']))
+    platforms = list(set(data['x_mitre_platforms'].apply(tuple)))
     platforms.sort()
     selected_platform = st.selectbox("Select a platform", ['All'] + platforms)
 
     if selected_platform != 'All':
-        data = data[data['platform_'] == selected_platform]
+        data = data[data['x_mitre_platforms'].apply(tuple) == selected_platform]
 
     tactics = list(set(data['tactic']))
     tactics.sort()
@@ -64,19 +63,6 @@ def main():
         st.write("Description:", technique_data['description'].values[0])
         st.write("Detection:", technique_data['x_mitre_detection'].values[0])
         st.write("Mitigation:", technique_data['x_mitre_mitigations'].values[0])
-
-    # Visualization
-    st.altair_chart(
-        alt.Chart(data)
-            .mark_circle(size=60)
-            .encode(
-                x='tactic:O',
-                y='platform_:O',
-                color='tactic:N',
-                tooltip=['name', 'description', 'tactic', 'platform_']
-            ).interactive(),
-        use_container_width=True
-    )
 
 if __name__ == "__main__":
     main()
