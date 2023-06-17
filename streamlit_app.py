@@ -8,18 +8,19 @@ def load_data():
     url = "https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json"
     response = requests.get(url)
     raw_data = response.json()
-    
+
     techniques = []
     for obj in raw_data["objects"]:
         if obj['type'] == 'attack-pattern':
+            obj['tactic'] = [x['phase_name'] for x in obj.get('kill_chain_phases', []) if x['kill_chain_name'] == 'mitre-attack']
             techniques.append(obj)
-            
-    techniques_df = pd.json_normalize(techniques, 'kill_chain_phases', ['name', 'description', 'x_mitre_platforms', 'x_mitre_detection', 'x_mitre_mitigations'])
 
-    # Adding a column to hold the tactic (phase_name) for each technique
-    techniques_df['tactic'] = techniques_df['phase_name']
+    data = pd.json_normalize(techniques, 'x_mitre_platforms', ['name', 'description', 'tactic', 'x_mitre_detection', 'x_mitre_mitigations'], record_prefix='platform_')
+    
+    # Explode the tactic list into multiple rows
+    data = data.explode('tactic')
 
-    return techniques_df
+    return data
 
 @st.cache_data(ttl=3600)
 def fetch_and_cache_data():
@@ -32,12 +33,12 @@ def main():
     data = fetch_and_cache_data()
 
     # Filter options
-    platforms = list(set([item for sublist in data['x_mitre_platforms'].dropna() for item in sublist]))
+    platforms = list(set(data['platform_']))
     platforms.sort()
     selected_platform = st.selectbox("Select a platform", ['All'] + platforms)
 
     if selected_platform != 'All':
-        data = data[data['x_mitre_platforms'].apply(lambda x: selected_platform in x if x else False)]
+        data = data[data['platform_'] == selected_platform]
 
     tactics = list(set(data['tactic']))
     tactics.sort()
@@ -70,9 +71,9 @@ def main():
             .mark_circle(size=60)
             .encode(
                 x='tactic:O',
-                y='x_mitre_platforms:O',
+                y='platform_:O',
                 color='tactic:N',
-                tooltip=['name', 'description', 'tactic', 'x_mitre_platforms']
+                tooltip=['name', 'description', 'tactic', 'platform_']
             ).interactive(),
         use_container_width=True
     )
