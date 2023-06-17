@@ -18,10 +18,11 @@ def load_data():
 
     # Explode the tactic list into multiple rows
     data = data.explode('tactic')
+    data['tactic'].fillna("Unknown", inplace=True)
 
     return data
 
-@st.cache_data(ttl=3600)
+@st.cache(ttl=3600)
 def fetch_and_cache_data():
     return load_data()
 
@@ -32,12 +33,12 @@ def main():
     data = fetch_and_cache_data()
 
     # Filter options
-    platforms = list(set(data['x_mitre_platforms'].apply(tuple)))
+    platforms = list(set([platform for sublist in data['x_mitre_platforms'].dropna() for platform in sublist]))
     platforms.sort()
     selected_platform = st.selectbox("Select a platform", ['All'] + platforms)
 
     if selected_platform != 'All':
-        data = data[data['x_mitre_platforms'].apply(tuple) == selected_platform]
+        data = data[data['x_mitre_platforms'].apply(lambda x: selected_platform in x if isinstance(x, list) else False)]
 
     tactics = list(set(data['tactic']))
     tactics.sort()
