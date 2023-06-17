@@ -16,6 +16,9 @@ def load_data():
             
     techniques_df = pd.json_normalize(techniques, 'kill_chain_phases', ['name', 'description', 'x_mitre_platforms', 'x_mitre_detection', 'x_mitre_mitigations'])
 
+    # Adding a column to hold the tactic (phase_name) for each technique
+    techniques_df['tactic'] = techniques_df['phase_name']
+
     return techniques_df
 
 @st.cache_data(ttl=3600)
@@ -36,12 +39,12 @@ def main():
     if selected_platform != 'All':
         data = data[data['x_mitre_platforms'].apply(lambda x: selected_platform in x if x else False)]
 
-    tactics = list(set([d['phase_name'] for d_list in data['kill_chain_phases'].dropna() for d in d_list]))
+    tactics = list(set(data['tactic']))
     tactics.sort()
     selected_tactic = st.selectbox("Select a Tactic", ['All'] + tactics)
 
     if selected_tactic != 'All':
-        data = data[data['kill_chain_phases'].apply(lambda d_list: any(d['phase_name'] == selected_tactic for d in d_list))]
+        data = data[data['tactic'] == selected_tactic]
 
     techniques = list(set(data['name']))
     techniques.sort()
@@ -66,10 +69,10 @@ def main():
         alt.Chart(data)
             .mark_circle(size=60)
             .encode(
-                x='phase_name:O',
+                x='tactic:O',
                 y='x_mitre_platforms:O',
-                color='phase_name:N',
-                tooltip=['name', 'description', 'phase_name', 'x_mitre_platforms']
+                color='tactic:N',
+                tooltip=['name', 'description', 'tactic', 'x_mitre_platforms']
             ).interactive(),
         use_container_width=True
     )
