@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 
 # URL to the STIX data file in your GitHub repo
-url = 'https://raw.githubusercontent.com/<username>/<repo>/<branch>/<path_to_file>'
+url = 'https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json'
 
 # Path to save the downloaded file to
 path_to_save = './data.json'
