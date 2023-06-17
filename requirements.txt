@@ -5,3 +5,4 @@ requests
 pandas
 matplotlib
 openai
+taxii2-client
