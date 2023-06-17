@@ -14,7 +14,7 @@ def load_data():
         if obj['type'] == 'attack-pattern':
             techniques.append(obj)
             
-    techniques_df = pd.json_normalize(techniques)
+    techniques_df = pd.json_normalize(techniques, 'kill_chain_phases', ['name', 'description', 'x_mitre_platforms', 'x_mitre_detection', 'x_mitre_mitigations'])
 
     return techniques_df
 
@@ -36,12 +36,12 @@ def main():
     if selected_platform != 'All':
         data = data[data['x_mitre_platforms'].apply(lambda x: selected_platform in x if x else False)]
 
-    tactics = list(set([item for sublist in data['kill_chain_phases'].dropna() for item in sublist]))
+    tactics = list(set(data['phase_name']))
     tactics.sort()
     selected_tactic = st.selectbox("Select a Tactic", ['All'] + tactics)
 
     if selected_tactic != 'All':
-        data = data[data['kill_chain_phases'].apply(lambda x: selected_tactic in x if x else False)]
+        data = data[data['phase_name'] == selected_tactic]
 
     techniques = list(set(data['name']))
     techniques.sort()
@@ -66,10 +66,10 @@ def main():
         alt.Chart(data)
             .mark_circle(size=60)
             .encode(
-                x='kill_chain_phases:O',
+                x='phase_name:O',
                 y='x_mitre_platforms:O',
-                color='kill_chain_phases:N',
-                tooltip=['name', 'description', 'kill_chain_phases', 'x_mitre_platforms']
+                color='phase_name:N',
+                tooltip=['name', 'description', 'phase_name', 'x_mitre_platforms']
             ).interactive(),
         use_container_width=True
     )
