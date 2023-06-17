@@ -36,12 +36,12 @@ def main():
     if selected_platform != 'All':
         data = data[data['x_mitre_platforms'].apply(lambda x: selected_platform in x if x else False)]
 
-    tactics = list(set(data['phase_name']))
+    tactics = list(set([d['phase_name'] for d_list in data['kill_chain_phases'].dropna() for d in d_list]))
     tactics.sort()
     selected_tactic = st.selectbox("Select a Tactic", ['All'] + tactics)
 
     if selected_tactic != 'All':
-        data = data[data['phase_name'] == selected_tactic]
+        data = data[data['kill_chain_phases'].apply(lambda d_list: any(d['phase_name'] == selected_tactic for d in d_list))]
 
     techniques = list(set(data['name']))
     techniques.sort()
