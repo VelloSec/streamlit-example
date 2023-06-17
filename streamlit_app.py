@@ -1,7 +1,7 @@
 import requests
 import os
 from collections import Counter
-from stix2 import FileSystemSource, Filter
+from stix2 import parse
 import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit as st
@@ -9,39 +9,22 @@ import streamlit as st
 # URL to the STIX data file in your GitHub repo
 url = 'https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json'
 
-# Path to save the downloaded file to
-path_to_save = './data.json'
-
-# Download the file if it's not already present
-if not os.path.exists(path_to_save):
-    response = requests.get(url)
-    response.raise_for_status()  # Raise exception if the request failed
-    with open(path_to_save, 'wb') as f:
-        f.write(response.content)
-
-# Define the source of your STIX data
-fs = FileSystemSource(path_to_save)
-
 @st.cache
 def load_data():
-    # Fetch all attack patterns (techniques)
-    techniques = fs.query([Filter('type', '=', 'attack-pattern')])
+    # Fetch the STIX data file
+    response = requests.get(url)
+    response.raise_for_status()  # Raise exception if the request failed
 
-    # Fetch all intrusion sets (actors)
-    actors = fs.query([Filter('type', '=', 'intrusion-set')])
+    # Parse the STIX data
+    bundle = parse(response.text)
 
-    # Fetch all malware (software)
-    software = fs.query([Filter('type', '=', 'malware')])
-
-    # Fetch all relationships
-    relationships = fs.query([Filter('type', '=', 'relationship')])
+    # Extract entities from the bundle
+    techniques = [obj for obj in bundle.objects if obj['type'] == 'attack-pattern']
+    actors = [obj for obj in bundle.objects if obj['type'] == 'intrusion-set']
+    software = [obj for obj in bundle.objects if obj['type'] == 'malware']
+    relationships = [obj for obj in bundle.objects if obj['type'] == 'relationship']
 
     return techniques, actors, software, relationships
-
-def get_related_entities(entity_id, relationships, entities):
-    related_ids = [rel['target_ref'] for rel in relationships if rel['source_ref'] == entity_id]
-    related_entities = [entity for entity in entities if entity['id'] in related_ids]
-    return related_entities
 
 def generate_response(question, context, api_key):
     # Use the OpenAI API to generate a response to the question based on the context
@@ -107,3 +90,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
