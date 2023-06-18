@@ -25,8 +25,8 @@ def process_data(data):
 # Function to filter and display the data
 def filter_data(techniques, software, groups, selected_software, selected_group):
     filtered_techniques = [technique for technique in techniques if
-                           (selected_software is None or selected_software in technique.get('x_mitre_products', []))) and
-                           (selected_group is None or selected_group in technique.get('x_mitre_groups', []))]
+                           ((selected_software is None) or (selected_software in technique.get('x_mitre_products', []))) and
+                           ((selected_group is None) or (selected_group in technique.get('x_mitre_groups', [])))]
 
     return filtered_techniques
 
