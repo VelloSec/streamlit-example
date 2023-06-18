@@ -3,7 +3,7 @@ import pandas as pd
 import altair as alt
 
 # Load the data from the GitHub repository
-@st.cache_data(allow_output_mutation=True)
+@st.cache(allow_output_mutation=True)
 def load_data():
     data_url = "https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json"
     return pd.read_json(data_url)
