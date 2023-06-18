@@ -1,76 +1,63 @@
-import json
+import streamlit as st
 import pandas as pd
 import requests
-import streamlit as st
 
+@st.cache_data
 def load_data():
-    url = "https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json"
-    response = requests.get(url)
-    raw_data = response.json()
-
-    techniques = []
-    for obj in raw_data["objects"]:
-        if obj['type'] == 'attack-pattern':
-            obj['tactic'] = [x['phase_name'] for x in obj.get('kill_chain_phases', []) if x['kill_chain_name'] == 'mitre-attack']
-            techniques.append(obj)
-
-    data = pd.json_normalize(techniques)
-
-    # Explode the tactic list into multiple rows
-    data = data.explode('tactic')
-    data['tactic'].fillna("Unknown", inplace=True)
-
+    url = 'https://raw.githubusercontent.com/center-for-threat-informed-defense/attack-workbench-frontend/master/public/cti/stix/enterprise-attack.json'
+    file = requests.get(url)
+    data = file.json()
     return data
 
-@st.cache(ttl=3600)
-def fetch_and_cache_data():
-    return load_data()
+@st.cache_data
+def filter_data(data, object_type):
+    filtered = [obj for obj in data['objects'] if obj['type'] == object_type]
+    return pd.json_normalize(filtered)
 
 def main():
-    st.title("MITRE ATT&CK Navigator")
+    data = load_data()
+    tactics = filter_data(data, 'x-mitre-tactic')
+    techniques = filter_data(data, 'attack-pattern')
+    software = filter_data(data, 'malware') 
+    groups = filter_data(data, 'intrusion-set') 
 
-    # Load data
-    data = fetch_and_cache_data()
+    search_term = st.text_input('Search')
 
-    # Filter options
-    platforms = list(set([platform for sublist in data['x_mitre_platforms'].dropna() for platform in sublist]))
-    platforms.sort()
-    selected_platform = st.selectbox("Select a platform", ['All'] + platforms)
+    if search_term:
+        techniques = techniques[techniques['name'].str.contains(search_term, case=False)]
+        tactics = tactics[tactics['name'].str.contains(search_term, case=False)]
+        software = software[software['name'].str.contains(search_term, case=False)]
+        groups = groups[groups['name'].str.contains(search_term, case=False)]
 
-    if selected_platform != 'All':
-        data = data[data['x_mitre_platforms'].apply(lambda x: selected_platform in x if isinstance(x, list) else False)]
+    platform_choice = st.selectbox('Choose a Platform', ['All'] + list(techniques['x_mitre_platforms'].explode().unique()))
+    software_choice = st.selectbox('Choose a Software', ['All'] + list(software['name']))
+    group_choice = st.selectbox('Choose a Group', ['All'] + list(groups['name']))
 
-    tactics = list(set(data['tactic']))
-    tactics.sort()
-    selected_tactic = st.selectbox("Select a Tactic", ['All'] + tactics)
+    if platform_choice != 'All':
+        techniques = techniques[techniques['x_mitre_platforms'].apply(lambda x: platform_choice in x)]
+        tactics = tactics[tactics['x_mitre_platforms'].apply(lambda x: platform_choice in x if x else False)]
 
-    if selected_tactic != 'All':
-        data = data[data['tactic'] == selected_tactic]
+    if software_choice != 'All':
+        techniques = techniques[techniques['software_labels'].apply(lambda x: software_choice in x if x else False)]
 
-    techniques = list(set(data['name']))
-    techniques.sort()
-    selected_technique = st.selectbox("Select a Technique", ['All'] + techniques)
+    if group_choice != 'All':
+        techniques = techniques[techniques['group_labels'].apply(lambda x: group_choice in x if x else False)]
 
-    if selected_technique != 'All':
-        data = data[data['name'] == selected_technique]
-
-    # Display filtered data
-    if st.checkbox('Show raw data'):
-        st.write(data)
-
-    # Supplemental Information
+    tactic_choice = st.selectbox('Choose a Tactic', tactics['name'])
+    tactic_data = tactics[tactics['name'] == tactic_choice]
+    technique_choice = st.selectbox('Choose a Technique', techniques['name'])
+    technique_data = techniques[techniques['name'] == technique_choice]
+    
+    st.write("Tactic Description:", tactic_data['description'].values[0])
+    
+    if 'x_mitre_mitigations' in tactic_data.columns:
+        st.write("Tactic Mitigation:", tactic_data['x_mitre_mitigations'].values[0])
+    
     if st.checkbox('Show Supplemental Information'):
-        if selected_technique != 'All':
-            technique_data = data[data['name'] == selected_technique]
-            st.write("Description:", technique_data['description'].values[0])
-            st.write("Detection:", technique_data['x_mitre_detection'].values[0])
+        st.write("Technique Description:", technique_data['description'].values[0])
+        
+        if 'x_mitre_mitigations' in technique_data.columns:
             st.write("Mitigation:", technique_data['x_mitre_mitigations'].values[0])
-        else:
-            tactic_data = data[data['tactic'] == selected_tactic]
-            if not tactic_data.empty:
-                st.write("Tactic Description:", tactic_data['description'].values[0])
-                st.write("Tactic Detection:", tactic_data['x_mitre_detection'].values[0])
-                st.write("Tactic Mitigation:", tactic_data['x_mitre_mitigations'].values[0])
 
 if __name__ == "__main__":
     main()
