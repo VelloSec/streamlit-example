@@ -17,7 +17,7 @@ def load_data():
 def process_data(data):
     techniques = [obj for obj in data['objects'] if obj['type'] == 'attack-pattern']
     software = sorted(list(set(software for technique in techniques for software in technique.get('x_mitre_products', []))))
-    tactics = sorted(list(set(tactic for technique in techniques for tactic_obj in technique.get('kill_chain_phases', []) for tactic in tactic_obj.get('phase_name', [])))))
+    tactics = sorted(list(set(tactic for technique in techniques for tactic in technique.get('x_mitre_tactics', [])))))
     groups = sorted(list(set(group for technique in techniques for group in technique.get('x_mitre_groups', []))))
     return techniques, software, tactics, groups
 
@@ -31,7 +31,7 @@ def filter_data(techniques, software, tactics, groups):
     filtered_techniques = [technique for technique in techniques if
                            (selected_technique is None or technique == selected_technique) and
                            (selected_software is None or selected_software in technique.get('x_mitre_products', [])) and
-                           (selected_tactic is None or any(tactic_obj.get('phase_name') == selected_tactic for tactic_obj in technique.get('kill_chain_phases', []))) and
+                           (selected_tactic is None or selected_tactic in technique.get('x_mitre_tactics', []))) and
                            (selected_group is None or selected_group in technique.get('x_mitre_groups', []))]
 
     return filtered_techniques
@@ -54,7 +54,7 @@ def main():
     # Additional Features
 
     # 1. Display count of techniques per tactic
-    tactic_counts = pd.DataFrame([(technique['tactic'], 1) for technique in filtered_techniques], columns=['Tactic', 'Count'])
+    tactic_counts = pd.DataFrame([(technique['x_mitre_tactics'], 1) for technique in filtered_techniques], columns=['Tactic', 'Count'])
     tactic_chart = alt.Chart(tactic_counts).mark_bar().encode(
         x='Tactic',
         y='Count'
