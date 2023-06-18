@@ -1,15 +1,12 @@
 import streamlit as st
 import pandas as pd
-import requests
+import json
 
-@st.cache_data
 def load_data():
-    url = 'https://raw.githubusercontent.com/center-for-threat-informed-defense/attack-workbench-frontend/master/public/cti/stix/enterprise-attack.json'
-    file = requests.get(url)
-    data = file.json()
+    with open('enterprise-attack.json', 'r') as f:
+        data = json.load(f)
     return data
 
-@st.cache_data
 def filter_data(data, object_type):
     filtered = [obj for obj in data['objects'] if obj['type'] == object_type]
     return pd.json_normalize(filtered)
