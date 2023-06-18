@@ -1,57 +1,33 @@
 import pandas as pd
 import streamlit as st
+import altair as alt
+import requests
+import matplotlib.pyplot as plt
+from openai import OpenAIApi
 
 # Load the data from the GitHub repository
 @st.cache
 def load_data():
-    data = pd.read_json('https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json')
+    url = 'https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json'
+    response = requests.get(url)
+    data = response.json()
     return data
 
 # Process the data and extract relevant information
 def process_data(data):
     techniques = [obj for obj in data['objects'] if obj['type'] == 'attack-pattern']
     software = sorted(list(set(technique['x_mitre_products'][0] for technique in techniques if 'x_mitre_products' in technique)))
-    tactics = sorted(list(set(tactic for technique in techniques for tactic_obj in technique.get('kill_chain_phases', []) for tactic in tactic_obj.get('kill_chain_name', [])))))
+    tactics = sorted(list(set(tactic for technique in techniques for tactic in technique.get('kill_chain_phases', []) for tactic_obj in tactic.get('kill_chain_name', []))))
     groups = sorted(list(set(group for technique in techniques if 'x_mitre_groups' in technique for group in technique['x_mitre_groups'])))
-    
     return techniques, software, tactics, groups
 
-# Display technique details and additional features
-def display_technique_details(technique):
-    st.write('**Technique Name:**', technique['name'])
-    st.write('**Technique ID:**', technique['external_references'][0]['external_id'])
-    st.write('**Description:**', technique['description'])
-    
-    if 'x_mitre_platforms' in technique:
-        st.write('**Platforms:**', ', '.join(technique['x_mitre_platforms']))
-    
-    if 'x_mitre_data_sources' in technique:
-        st.write('**Data Sources:**', ', '.join(technique['x_mitre_data_sources']))
-    
-    if 'x_mitre_detection' in technique:
-        st.write('**Detection Recommendations:**', technique['x_mitre_detection'])
-    
-    if 'x_mitre_contributors' in technique:
-        st.write('**Contributors:**', ', '.join(technique['x_mitre_contributors']))
-    
-    if 'x_mitre_domains' in technique:
-        st.write('**Domains:**', ', '.join(technique['x_mitre_domains']))
-    
-    if 'x_mitre_impact_type' in technique:
-        st.write('**Impact Type:**', technique['x_mitre_impact_type'])
-    
-    if 'x_mitre_permissions_required' in technique:
-        st.write('**Permissions Required:**', ', '.join(technique['x_mitre_permissions_required']))
-    
-    if 'x_mitre_system_requirements' in technique:
-        st.write('**System Requirements:**', technique['x_mitre_system_requirements'])
-    
-    if 'x_mitre_remote_support' in technique:
-        st.write('**Remote Support:**', technique['x_mitre_remote_support'])
-    
-    # Add implementation for additional features
-    
-    st.write('---')
+# Generate Altair chart
+def generate_chart(df):
+    chart = alt.Chart(df).mark_bar().encode(
+        x='Count',
+        y=alt.Y('Technique Name', sort='-x')
+    )
+    return chart
 
 # Main function
 def main():
@@ -71,7 +47,7 @@ def main():
         filtered_techniques = [technique for technique in filtered_techniques if 'x_mitre_products' in technique and selected_software in technique['x_mitre_products'][0]]
     
     if selected_tactic:
-        filtered_techniques = [technique for technique in filtered_techniques if 'kill_chain_phases' in technique and any(tactic['kill_chain_name'] == selected_tactic for tactic_obj in technique['kill_chain_phases'] for tactic in tactic_obj['kill_chain_name'])]
+        filtered_techniques = [technique for technique in filtered_techniques if 'kill_chain_phases' in technique and any(tactic['kill_chain_name'] == selected_tactic for tactic_obj in technique['kill_chain_phases'] for tactic in tactic_obj.get('kill_chain_name', []))]
     
     if selected_technique:
         filtered_techniques = [technique for technique in filtered_techniques if technique['name'] == selected_technique]
@@ -80,7 +56,38 @@ def main():
         filtered_techniques = [technique for technique in filtered_techniques if 'x_mitre_groups' in technique and selected_group in technique['x_mitre_groups']]
     
     for technique in filtered_techniques:
-        display_technique_details(technique)
+        st.write('**Technique Name:**', technique['name'])
+        st.write('**Technique ID:**', technique['external_references'][0]['external_id'])
+        st.write('**Description:**', technique['description'])
+        st.write('---')
+    
+    # Additional functionality using Altair and OpenAI
+    if st.button('Generate Technique Chart'):
+        df = pd.DataFrame({'Technique Name': [technique['name'] for technique in filtered_techniques],
+                           'Count': [len(technique['external_references']) for technique in filtered_techniques]})
+        chart = generate_chart(df)
+        st.altair_chart(chart, use_container_width=True)
+    
+    if st.button('Generate Technique Description'):
+        selected_technique = st.selectbox('Select a Technique', [technique['name'] for technique in filtered_techniques])
+        technique_description = [technique['description'] for technique in filtered_techniques if technique['name'] == selected_technique]
+        if technique_description:
+            st.write('**Technique Description:**', technique_description[0])
+        else:
+            st.write('No technique description available for the selected technique.')
+    
+    if st.button('Get AI-Powered Insights'):
+        openai_api_key = st.text_input('Enter OpenAI API Key', type='password')
+        if openai_api_key:
+            openai = OpenAIApi(api_key=openai_api_key)
+            selected_technique = st.selectbox('Select a Technique', [technique['name'] for technique in filtered_techniques])
+            response = openai.get_insights(selected_technique)
+            if response:
+                st.write('**AI-Powered Insights:**', response)
+            else:
+                st.write('No insights available for the selected technique.')
+        else:
+            st.write('Please enter your OpenAI API Key to use this feature.')
 
 if __name__ == '__main__':
     main()
