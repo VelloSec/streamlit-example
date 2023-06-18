@@ -11,7 +11,7 @@ def load_data():
 def process_data(data):
     techniques = [obj for obj in data['objects'] if obj['type'] == 'attack-pattern']
     software = sorted(list(set(technique['x_mitre_products'][0] for technique in techniques if 'x_mitre_products' in technique)))
-    tactics = sorted(list(set(tactic for technique in techniques for tactic in technique['kill_chain_phases'])))
+    tactics = sorted(list(set(tactic for technique in techniques for tactic_obj in technique.get('kill_chain_phases', []) for tactic in tactic_obj.get('kill_chain_name', [])))))
     groups = sorted(list(set(group for technique in techniques if 'x_mitre_groups' in technique for group in technique['x_mitre_groups'])))
     
     return techniques, software, tactics, groups
