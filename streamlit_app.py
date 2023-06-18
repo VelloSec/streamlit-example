@@ -9,8 +9,10 @@ import altair as alt
 def load_data():
     url = 'https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json'
     response = requests.get(url)
-    data = response.json()
-    return data
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error("Failed to load data from the MITRE ATT&CK repository.")
 
 # Function to process the loaded data
 @st.cache_data(allow_output_mutation=True)
@@ -32,6 +34,9 @@ def filter_data(techniques, software, groups, selected_software, selected_group)
 def main():
     st.title("MITRE ATT&CK Navigator")
     data = load_data()
+    if data is None:
+        return
+
     techniques, software, groups = process_data(data)
 
     # Enable dynamic filtering of dropdowns
@@ -68,7 +73,7 @@ def main():
     st.altair_chart(group_chart, use_container_width=True)
 
     # 3. Show a word cloud of technique descriptions
-    technique_descriptions = " ".join([technique['description'] for technique in filtered_techniques])
+    technique_descriptions = " ".join(technique['description'] for technique in filtered_techniques)
     st.markdown('### Technique Descriptions Word Cloud')
     st.write(technique_descriptions)
 
