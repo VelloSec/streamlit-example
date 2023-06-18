@@ -30,7 +30,7 @@ def update_dropdowns(selected_tactic, selected_technique, selected_group, select
     if selected_tactic:
         filtered_techniques = [technique for technique in filtered_techniques if selected_tactic in technique.get('x_mitre_tactics', [])]
     if selected_technique:
-        filtered_techniques = [technique for technique in filtered_techniques if selected_technique in technique.get('name', '')]
+        filtered_techniques = [technique for technique in filtered_techniques if technique.get('name', '') == selected_technique]
     if selected_group:
         filtered_techniques = [technique for technique in filtered_techniques if selected_group in technique.get('x_mitre_groups', [])]
     if selected_data_source:
@@ -52,7 +52,7 @@ def main():
     techniques, software, tactics, groups, data_sources = process_data(data)
 
     selected_tactic = filter_dropdown("Tactic", tactics, None)
-    selected_technique = filter_dropdown("Technique", [technique['name'] for technique in techniques], None)
+    selected_technique = filter_dropdown("Technique", [technique.get('name', '') for technique in techniques], None)
     selected_group = filter_dropdown("APT Group", groups, None)
     selected_data_source = filter_dropdown("Data Source", data_sources, None)
     selected_software = filter_dropdown("Software", software, None)
@@ -65,8 +65,8 @@ def main():
     filtered_techniques = [technique for technique in filtered_techniques if search_text.lower() in technique.get('name', '').lower()]
 
     if filtered_techniques:
-        selected_technique = st.sidebar.selectbox("Select a Technique", [technique['name'] for technique in filtered_techniques])
-        selected_technique = [technique for technique in filtered_techniques if technique['name'] == selected_technique][0]
+        selected_technique = st.sidebar.selectbox("Select a Technique", [technique.get('name', '') for technique in filtered_techniques])
+        selected_technique = [technique for technique in filtered_techniques if technique.get('name', '') == selected_technique][0]
         st.sidebar.markdown(f"**{selected_technique['name']}**")
         st.sidebar.markdown(f"[Mitre ATT&CK Link]({selected_technique['external_references'][0]['url']})")
 
