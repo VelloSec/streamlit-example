@@ -3,7 +3,7 @@ import pandas as pd
 import altair as alt
 import requests
 
-@st.cache_data(allow_output_mutation=True)
+@st.cache_data()
 def load_data():
     url = 'https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json'
     data = pd.read_json(url)
@@ -65,23 +65,24 @@ def main():
     filtered_techniques = [technique for technique in filtered_techniques if search_text.lower() in technique.get('name', '').lower()]
 
     if filtered_techniques:
+        st.sidebar.subheader("Selected Technique")
         selected_technique = st.sidebar.selectbox("Select a Technique", [technique.get('name', '') for technique in filtered_techniques])
         selected_technique = [technique for technique in filtered_techniques if technique.get('name', '') == selected_technique][0]
         st.sidebar.markdown(f"**{selected_technique['name']}**")
         st.sidebar.markdown(f"[Mitre ATT&CK Link]({selected_technique['external_references'][0]['url']})")
 
-    tactic_counts = pd.DataFrame([(technique.get('x_mitre_tactics', []), 1) for technique in filtered_techniques], columns=['Tactic', 'Count'])
+        tactic_counts = pd.DataFrame([(technique.get('x_mitre_tactics', []), 1) for technique in filtered_techniques], columns=['Tactic', 'Count'])
 
-    st.header("Tactic Counts")
-    st.dataframe(tactic_counts)
+        st.header("Tactic Counts")
+        st.dataframe(tactic_counts)
 
-    chart = alt.Chart(tactic_counts).mark_bar().encode(
-        x='Tactic',
-        y='Count',
-        tooltip=['Tactic', 'Count']
-    ).interactive()
+        chart = alt.Chart(tactic_counts).mark_bar().encode(
+            x='Tactic',
+            y='Count',
+            tooltip=['Tactic', 'Count']
+        ).interactive()
 
-    st.altair_chart(chart, use_container_width=True)
+        st.altair_chart(chart, use_container_width=True)
 
 if __name__ == "__main__":
     main()
