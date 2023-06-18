@@ -11,7 +11,7 @@ def load_data():
 # Process the data to extract relevant information
 def process_data(data):
     techniques = data["objects"]
-    software = sorted(set(technique.get('x_mitre_products', []) for technique in techniques))
+    software = sorted(set(product for technique in techniques for product in technique.get('x_mitre_products', [])))
     tactics = sorted(set(tactic for technique in techniques for tactic in technique.get('x_mitre_tactics', [])))
     groups = sorted(set(group for technique in techniques for group in technique.get('x_mitre_groups', [])))
     data_sources = sorted(set(source for technique in techniques for source in technique.get('x_mitre_data_sources', [])))
