@@ -22,14 +22,8 @@ def process_data(data):
     return techniques, software, tactics, groups
 
 # Function to filter and display the data
-def filter_data(techniques, software, tactics, groups):
-    selected_technique = st.sidebar.selectbox('Select Technique', techniques, format_func=lambda technique: technique['name'])
-    selected_software = st.sidebar.selectbox('Select Software', software)
-    selected_tactic = st.sidebar.selectbox('Select Tactic', tactics)
-    selected_group = st.sidebar.selectbox('Select APT Group', groups)
-
+def filter_data(techniques, software, tactics, groups, selected_software, selected_tactic, selected_group):
     filtered_techniques = [technique for technique in techniques if
-                           (selected_technique is None or technique == selected_technique) and
                            (selected_software is None or selected_software in technique.get('x_mitre_products', [])) and
                            (selected_tactic is None or selected_tactic in technique.get('x_mitre_tactics', [])) and
                            (selected_group is None or selected_group in technique.get('x_mitre_groups', []))]
@@ -42,7 +36,12 @@ def main():
     data = load_data()
     techniques, software, tactics, groups = process_data(data)
 
-    filtered_techniques = filter_data(techniques, software, tactics, groups)
+    # Enable dynamic filtering of dropdowns
+    selected_software = st.sidebar.selectbox('Select Software', options=[None] + software)
+    selected_tactic = st.sidebar.selectbox('Select Tactic', options=[None] + tactics)
+    selected_group = st.sidebar.selectbox('Select APT Group', options=[None] + groups)
+
+    filtered_techniques = filter_data(techniques, software, tactics, groups, selected_software, selected_tactic, selected_group)
 
     st.markdown('### Techniques')
     for technique in filtered_techniques:
@@ -65,15 +64,15 @@ def main():
     # 2. Show a table of techniques with their associated software
     technique_df = pd.DataFrame([(technique['name'], ', '.join(technique.get('x_mitre_products', []))) for technique in filtered_techniques], columns=['Technique', 'Software'])
     st.markdown('### Techniques with Associated Software')
-    st.dataframe(technique_df)
+    st.table(technique_df)
 
-    # 3. Show a pie chart of APT group distribution
+    # 3. Show a count of techniques per APT group using a bar chart
     group_counts = pd.DataFrame([(technique['x_mitre_groups'], 1) for technique in filtered_techniques], columns=['Group', 'Count'])
-    group_chart = alt.Chart(group_counts).mark_arc().encode(
-        color='Group',
-        theta='Count'
+    group_chart = alt.Chart(group_counts).mark_bar().encode(
+        x='Group',
+        y='Count'
     )
-    st.markdown('### APT Group Distribution')
+    st.markdown('### Technique Count per APT Group')
     st.altair_chart(group_chart, use_container_width=True)
 
     # 4. Show a bar chart of software usage
