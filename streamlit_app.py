@@ -30,6 +30,18 @@ def apply_filters(df, software, tactics, technique, search_term):
         df = df[df['name'].str.contains(search_term, case=False) | df['description'].str.contains(search_term, case=False)]
     return df
 
+def get_supplemental_info(df, selected_row):
+    supplemental_info = {}
+    row = df.loc[selected_row]
+
+    supplemental_info['Tactic'] = ', '.join([phase['phase_name'] for phase in row['kill_chain_phases']])
+    supplemental_info['Techniques'] = ', '.join([phase['kill_chain_name'] for sublist in row['kill_chain_phases'] for phase in sublist if phase.get('kill_chain_name')])
+    supplemental_info['Software'] = ', '.join(row['x_mitre_platforms'])
+    supplemental_info['Groups'] = ', '.join(row['x_mitre_groups'])
+    supplemental_info['Data Sources'] = ', '.join(row['x_mitre_data_sources'])
+
+    return supplemental_info
+
 def main():
     st.title('Enterprise ATT&CK Matrix Explorer')
 
@@ -47,6 +59,17 @@ def main():
     filtered_df = apply_filters(df, software_filter, tactics_filter, selected_technique, search_term)
 
     if not filtered_df.empty:
+        selected_row = st.radio('Select TTP', filtered_df.index)
+        supplemental_info = get_supplemental_info(filtered_df, selected_row)
+
+        st.subheader('Supplemental Information')
+        st.write('**Tactic:**', supplemental_info['Tactic'])
+        st.write('**Techniques:**', supplemental_info['Techniques'])
+        st.write('**Software:**', supplemental_info['Software'])
+        st.write('**Groups:**', supplemental_info['Groups'])
+        st.write('**Data Sources:**', supplemental_info['Data Sources'])
+
+        st.subheader('Filtered TTPs')
         st.dataframe(filtered_df[['name', 'description']])
     else:
         st.write('No results found.')
