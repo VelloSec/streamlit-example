@@ -62,8 +62,8 @@ def main():
     st.altair_chart(tactic_chart, use_container_width=True)
 
     # 2. Show a table of techniques with their associated software
-    technique_df = pd.DataFrame([(technique['name'], ', '.join(technique.get('x_mitre_products', []))) for technique in filtered_techniques], columns=['Technique', 'Software'])
-    st.markdown('### Techniques with Associated Software')
+    technique_df = pd.DataFrame([(technique['name'], ', '.join(technique.get('x_mitre_products', []))) for technique in filtered_techniques], columns=['Technique', 'Associated Software'])
+    st.markdown('### Techniques and Associated Software')
     st.table(technique_df)
 
     # 3. Show a count of techniques per APT group using a bar chart
