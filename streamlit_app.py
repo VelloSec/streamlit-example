@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-@st.cache(show_spinner=False)
+@st.cache(allow_output_mutation=True)
 def load_data():
     url = 'https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json'
     data = pd.read_json(url)
@@ -17,15 +17,25 @@ def process_data(data):
     return techniques, software, tactics, groups, data_sources
 
 def main():
-    st.title("MITRE ATT&CK Navigator Data Analysis")
+    st.set_page_config(layout="wide")
+
+    st.sidebar.title("Filters")
 
     data = load_data()
     techniques, software, tactics, groups, data_sources = process_data(data)
 
-    selected_software = st.selectbox("Software", software, key='software')
-    selected_tactic = st.selectbox("Tactic", tactics, key='tactic')
-    selected_group = st.selectbox("APT Group", groups, key='group')
-    selected_data_source = st.selectbox("Data Source", data_sources, key='data_source')
+    with st.sidebar:
+        st.subheader("Software")
+        selected_software = st.selectbox("", software, key='software')
+
+        st.subheader("Tactic")
+        selected_tactic = st.selectbox("", tactics, key='tactic')
+
+        st.subheader("APT Group")
+        selected_group = st.selectbox("", groups, key='group')
+
+        st.subheader("Data Source")
+        selected_data_source = st.selectbox("", data_sources, key='data_source')
 
     filtered_techniques = techniques
     if selected_software:
@@ -48,16 +58,13 @@ def main():
             st.write("---")
 
         st.header("Analytics:")
-        tactic_counts = pd.DataFrame([(technique['x_mitre_tactics'], 1) for technique in filtered_techniques], columns=['Tactic', 'Count'])
+        tactic_counts = pd.DataFrame([(technique.get('x_mitre_tactics', []), 1) for technique in filtered_techniques], columns=['Tactic', 'Count'])
         st.subheader("Tactic Counts")
         st.dataframe(tactic_counts)
 
-        software_counts = pd.DataFrame([(technique['x_mitre_products'], 1) for technique in filtered_techniques], columns=['Software', 'Count'])
+        software_counts = pd.DataFrame([(technique.get('x_mitre_products', []), 1) for technique in filtered_techniques], columns=['Software', 'Count'])
         st.subheader("Software Counts")
         st.dataframe(software_counts)
 
-    st.sidebar.markdown("---")
-    st.sidebar.text("MITRE ATT&CK Navigator Data Analysis")
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
