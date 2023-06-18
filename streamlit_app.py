@@ -12,18 +12,14 @@ def process_data(data):
     objects = data.get("objects", [])
     df = pd.DataFrame(objects)
 
-    software = sorted(list(set(df["x_mitre_products"].dropna())))
     tactics = sorted(list(set(df["kill_chain_phases"].dropna())))
     techniques = sorted(list(set(df["name"])))
     groups = sorted(list(set(group for sublist in df["x_mitre_groups"].dropna() for group in sublist)))
 
-    return df, software, tactics, techniques, groups
+    return df, tactics, techniques, groups
 
-def filter_data(df, software_filter, tactics_filter, technique_filter, group_filter):
+def filter_data(df, tactics_filter, technique_filter, group_filter):
     filtered_df = df.copy()
-    
-    if software_filter:
-        filtered_df = filtered_df[filtered_df["x_mitre_products"].apply(lambda x: software_filter in x)]
     
     if tactics_filter:
         filtered_df = filtered_df[filtered_df["kill_chain_phases"].apply(lambda x: any(tactic["kill_chain_name"] == tactics_filter for tactic in x))]
@@ -38,20 +34,18 @@ def filter_data(df, software_filter, tactics_filter, technique_filter, group_fil
 
 def main():
     data = load_data()
-    df, software, tactics, techniques, groups = process_data(data)
+    df, tactics, techniques, groups = process_data(data)
     
     st.title("MITRE ATT&CK Navigator")
     
     st.sidebar.header("Filters")
-    software_filter = st.sidebar.selectbox("Software", [""] + software)
     tactics_filter = st.sidebar.selectbox("Tactics", [""] + tactics)
     technique_filter = st.sidebar.selectbox("Techniques", [""] + techniques)
     group_filter = st.sidebar.selectbox("APT Groups", [""] + groups)
     
-    filtered_df = filter_data(df, software_filter, tactics_filter, technique_filter, group_filter)
+    filtered_df = filter_data(df, tactics_filter, technique_filter, group_filter)
     
     st.sidebar.subheader("Selected Filters")
-    st.sidebar.write("Software:", software_filter)
     st.sidebar.write("Tactics:", tactics_filter)
     st.sidebar.write("Technique:", technique_filter)
     st.sidebar.write("APT Group:", group_filter)
