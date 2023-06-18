@@ -3,7 +3,7 @@ import pandas as pd
 import altair as alt
 
 # Load the data from the GitHub repository
-@st.cache(allow_output_mutation=True)
+@st.cache_data(allow_output_mutation=True)
 def load_data():
     data_url = "https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json"
     return pd.read_json(data_url)
@@ -11,10 +11,10 @@ def load_data():
 # Process the data to extract relevant information
 def process_data(data):
     techniques = data["objects"]
-    software = sorted(list(set(technique.get('x_mitre_products', []) for technique in techniques)))
-    tactics = sorted(list(set(tactic for technique in techniques for tactic in technique.get('x_mitre_tactics', [])))))
-    groups = sorted(list(set(technique.get('x_mitre_groups', []) for technique in techniques)))
-    data_sources = sorted(list(set(technique.get('x_mitre_data_sources', []) for technique in techniques)))
+    software = sorted(set(technique.get('x_mitre_products', []) for technique in techniques))
+    tactics = sorted(set(tactic for technique in techniques for tactic in technique.get('x_mitre_tactics', [])))
+    groups = sorted(set(group for technique in techniques for group in technique.get('x_mitre_groups', [])))
+    data_sources = sorted(set(source for technique in techniques for source in technique.get('x_mitre_data_sources', [])))
     return techniques, software, tactics, groups, data_sources
 
 # Function to update the filtered techniques based on dropdown selections
@@ -64,13 +64,12 @@ def main():
     selected_software = None
 
     # Display the sidebar filters
-    with st.sidebar:
-        st.title("Filters")
-        selected_tactic = st.selectbox("Select a Tactic", tactics, index=tactics.index(selected_tactic))
-        selected_technique = st.selectbox("Select a Technique", [technique['name'] for technique in techniques], index=techniques.index(selected_technique))
-        selected_group = st.selectbox("Select an APT Group", groups, index=groups.index(selected_group))
-        selected_data_source = st.selectbox("Select a Data Source", data_sources, index=data_sources.index(selected_data_source))
-        selected_software = st.selectbox("Select a Software", software, index=software.index(selected_software))
+    st.sidebar.title("Filters")
+    selected_tactic = st.sidebar.selectbox("Select a Tactic", tactics, index=tactics.index(selected_tactic))
+    selected_technique = st.sidebar.selectbox("Select a Technique", [technique['name'] for technique in techniques], index=techniques.index(selected_technique))
+    selected_group = st.sidebar.selectbox("Select an APT Group", groups, index=groups.index(selected_group))
+    selected_data_source = st.sidebar.selectbox("Select a Data Source", data_sources, index=data_sources.index(selected_data_source))
+    selected_software = st.sidebar.selectbox("Select a Software", software, index=software.index(selected_software))
 
     # Update the filtered techniques based on the dropdown selections
     filtered_techniques = update_filtered_techniques(selected_tactic, selected_technique, selected_group, selected_data_source, selected_software, techniques)
