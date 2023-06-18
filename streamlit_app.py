@@ -3,7 +3,7 @@ import pandas as pd
 import altair as alt
 import requests
 
-@st.cache(hash_funcs={pd.DataFrame: lambda _: None})
+@st.cache_data(allow_output_mutation=True)
 def load_data():
     url = 'https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json'
     data = pd.read_json(url)
@@ -19,10 +19,10 @@ def process_data(data):
     return techniques, software, tactics, groups, data_sources
 
 def filter_dropdown(dropdown_label, options, selected_value):
-    filtered_options = [""]
+    filtered_options = options.copy()
     if selected_value:
-        filtered_options = [option for option in options if option != selected_value]
-    return st.selectbox(dropdown_label, filtered_options, key=f"{dropdown_label}_dropdown")
+        filtered_options.remove(selected_value)
+    return st.sidebar.selectbox(dropdown_label, [""] + filtered_options, key=f"{dropdown_label}_dropdown")
 
 def update_dropdowns(selected_tactic, selected_technique, selected_group, selected_data_source, selected_software, techniques, tactics, software, groups, data_sources):
     filtered_techniques = techniques
