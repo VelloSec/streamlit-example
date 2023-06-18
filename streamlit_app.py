@@ -3,7 +3,7 @@ import pandas as pd
 import altair as alt
 import requests
 
-@st.cache_data(allow_output_mutation=True)
+@st.cache(hash_funcs={pd.DataFrame: lambda _: None})
 def load_data():
     url = 'https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json'
     data = pd.read_json(url)
@@ -65,13 +65,12 @@ def main():
     filtered_techniques = [technique for technique in filtered_techniques if search_text.lower() in technique.get('name', '').lower()]
 
     if filtered_techniques:
-        st.sidebar.subheader("Supplemental Information")
-
-        selected_technique = filtered_techniques[0]
+        selected_technique = st.sidebar.selectbox("Select a Technique", [technique['name'] for technique in filtered_techniques])
+        selected_technique = [technique for technique in filtered_techniques if technique['name'] == selected_technique][0]
         st.sidebar.markdown(f"**{selected_technique['name']}**")
         st.sidebar.markdown(f"[Mitre ATT&CK Link]({selected_technique['external_references'][0]['url']})")
 
-    tactic_counts = pd.DataFrame([(technique['x_mitre_tactics'], 1) for technique in filtered_techniques], columns=['Tactic', 'Count'])
+    tactic_counts = pd.DataFrame([(technique.get('x_mitre_tactics', []), 1) for technique in filtered_techniques], columns=['Tactic', 'Count'])
 
     st.header("Tactic Counts")
     st.dataframe(tactic_counts)
