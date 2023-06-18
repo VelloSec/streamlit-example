@@ -2,8 +2,6 @@ import pandas as pd
 import streamlit as st
 import altair as alt
 import requests
-import matplotlib.pyplot as plt
-from openai import OpenAIApi
 
 # Load the data from the GitHub repository
 @st.cache
@@ -61,33 +59,12 @@ def main():
         st.write('**Description:**', technique['description'])
         st.write('---')
     
-    # Additional functionality using Altair and OpenAI
+    # Additional functionality using Altair and Streamlit
     if st.button('Generate Technique Chart'):
         df = pd.DataFrame({'Technique Name': [technique['name'] for technique in filtered_techniques],
                            'Count': [len(technique['external_references']) for technique in filtered_techniques]})
         chart = generate_chart(df)
         st.altair_chart(chart, use_container_width=True)
-    
-    if st.button('Generate Technique Description'):
-        selected_technique = st.selectbox('Select a Technique', [technique['name'] for technique in filtered_techniques])
-        technique_description = [technique['description'] for technique in filtered_techniques if technique['name'] == selected_technique]
-        if technique_description:
-            st.write('**Technique Description:**', technique_description[0])
-        else:
-            st.write('No technique description available for the selected technique.')
-    
-    if st.button('Get AI-Powered Insights'):
-        openai_api_key = st.text_input('Enter OpenAI API Key', type='password')
-        if openai_api_key:
-            openai = OpenAIApi(api_key=openai_api_key)
-            selected_technique = st.selectbox('Select a Technique', [technique['name'] for technique in filtered_techniques])
-            response = openai.get_insights(selected_technique)
-            if response:
-                st.write('**AI-Powered Insights:**', response)
-            else:
-                st.write('No insights available for the selected technique.')
-        else:
-            st.write('Please enter your OpenAI API Key to use this feature.')
 
 if __name__ == '__main__':
     main()
