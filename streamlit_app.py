@@ -25,15 +25,15 @@ def update_filtered_techniques(selected_tactic, selected_technique, selected_gro
     filtered_techniques = techniques
 
     if selected_tactic:
-        filtered_techniques = [technique for technique in filtered_techniques if selected_tactic in technique.get('x_mitre_tactics', [])]
+        filtered_techniques = filtered_techniques[filtered_techniques.apply(lambda x: selected_tactic in x.get('x_mitre_tactics', []), axis=1)]
     if selected_technique:
-        filtered_techniques = [technique for technique in filtered_techniques if technique.get('name', '') == selected_technique]
+        filtered_techniques = filtered_techniques[filtered_techniques.apply(lambda x: x.get('name', '') == selected_technique, axis=1)]
     if selected_group:
-        filtered_techniques = [technique for technique in filtered_techniques if selected_group in technique.get('x_mitre_groups', [])]
+        filtered_techniques = filtered_techniques[filtered_techniques.apply(lambda x: selected_group in x.get('x_mitre_groups', []), axis=1)]
     if selected_data_source:
-        filtered_techniques = [technique for technique in filtered_techniques if selected_data_source in technique.get('x_mitre_data_sources', [])]
+        filtered_techniques = filtered_techniques[filtered_techniques.apply(lambda x: selected_data_source in x.get('x_mitre_data_sources', []), axis=1)]
     if selected_software:
-        filtered_techniques = [technique for technique in filtered_techniques if selected_software in technique.get('x_mitre_products', [])]
+        filtered_techniques = filtered_techniques[filtered_techniques.apply(lambda x: selected_software in x.get('x_mitre_products', []), axis=1)]
 
     return filtered_techniques
 
@@ -59,9 +59,10 @@ def filter_dropdown(dropdown_label, options, selected_value):
         filtered_options.remove(selected_value)
     return st.selectbox(dropdown_label, [""] + filtered_options, key=f"{dropdown_label}_dropdown")
 
-# Function to display the technique details and related information
+# Function to display the technique details in the right panel
 def display_technique_details(technique):
-    st.markdown(f"**{technique['name']}**")
+    st.subheader(f"{technique['name']} ({technique['external_references'][0]['source_name']})")
+    st.markdown(technique['description'])
     st.markdown(f"[Mitre ATT&CK Link]({technique['external_references'][0]['url']})")
 
 # Function to display the tactic counts chart
@@ -86,7 +87,7 @@ def main():
     techniques, software, tactics, groups, data_sources = process_data(data)
 
     # Search box to filter techniques by name
-    search_text = st.sidebar.text_input("Search by Technique Name")
+    search_text = st.text_input("Search by Technique Name")
     filtered_techniques = update_filtered_techniques(None, None, None, None, None, techniques)
     if search_text:
         filtered_techniques = [technique for technique in filtered_techniques if search_text.lower() in technique.get('name', '').lower()]
@@ -105,14 +106,16 @@ def main():
     filtered_techniques = update_filtered_techniques(selected_tactic, selected_technique, selected_group, selected_data_source, selected_software, techniques)
 
     # Display the selected technique details
-    if filtered_techniques:
+    if filtered_techniques is not None:
         st.sidebar.subheader("Selected Technique")
         selected_technique = st.sidebar.selectbox("Select a Technique", [technique.get('name', '') for technique in filtered_techniques])
-        selected_technique = [technique for technique in filtered_techniques if technique.get('name', '') == selected_technique][0]
-        display_technique_details(selected_technique)
+        selected_technique = [technique for technique in filtered_techniques if technique.get('name', '') == selected_technique]
+        if selected_technique:
+            selected_technique = selected_technique[0]
+            display_technique_details(selected_technique)
 
-        # Display the tactic counts chart
-        display_tactic_counts(filtered_techniques)
+            # Display the tactic counts chart
+            display_tactic_counts(filtered_techniques)
 
 if __name__ == "__main__":
     main()
