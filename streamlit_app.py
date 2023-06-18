@@ -14,12 +14,13 @@ def process_data(data):
     attack_patterns = [obj for obj in data if obj['type'] == 'attack-pattern']
     df = pd.json_normalize(attack_patterns)
 
-    techniques = [obj for obj in data if obj['type'] == 'attack-pattern']
-    df = pd.json_normalize(techniques)
-
     software = sorted(list(set(software for sublist in df['x_mitre_platforms'].dropna() for software in sublist)))
-    groups = sorted(list(set(group for sublist in df['x_mitre_groups'].dropna() for group in sublist)))
     data_sources = sorted(list(set(source for sublist in df['x_mitre_data_sources'].dropna() for source in sublist)))
+
+    groups = []
+    if 'x_mitre_groups' in df:
+        groups = sorted(list(set(group for sublist in df['x_mitre_groups'].dropna() for group in sublist)))
+
     return df, software, groups, data_sources
 
 def apply_filters(df, software, groups, data_sources, search_term):
