@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import altair as alt
 
 # Function to load data from the GitHub repository
-@st.cache_data(allow_output_mutation=True)
+@st.cache(allow_output_mutation=True)
 def load_data():
     url = 'https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json'
     response = requests.get(url)
@@ -15,7 +15,7 @@ def load_data():
         st.error("Failed to load data from the MITRE ATT&CK repository.")
 
 # Function to process the loaded data
-@st.cache_data(allow_output_mutation=True)
+@st.cache(allow_output_mutation=True)
 def process_data(data):
     techniques = [obj for obj in data['objects'] if obj['type'] == 'attack-pattern']
     software = sorted(list(set(software for technique in techniques for software in technique.get('x_mitre_products', []))))
@@ -72,7 +72,7 @@ def main():
     st.markdown('### Technique Count per APT Group')
     st.altair_chart(group_chart, use_container_width=True)
 
-    # 3. Show a word cloud of technique descriptions
+    # 3. Display a word cloud of technique descriptions
     technique_descriptions = " ".join(technique['description'] for technique in filtered_techniques)
     st.markdown('### Technique Descriptions Word Cloud')
     st.write(technique_descriptions)
