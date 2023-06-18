@@ -65,13 +65,13 @@ def main():
     selected_technique = st.sidebar.selectbox('Technique', [technique['name'] for technique in techniques])
     selected_group = st.sidebar.selectbox('APT Group', groups)
     
-    filtered_techniques = []
+    filtered_techniques = techniques
     
     if selected_software:
-        filtered_techniques = [technique for technique in techniques if 'x_mitre_products' in technique and selected_software in technique['x_mitre_products'][0]]
+        filtered_techniques = [technique for technique in filtered_techniques if 'x_mitre_products' in technique and selected_software in technique['x_mitre_products'][0]]
     
     if selected_tactic:
-        filtered_techniques = [technique for technique in filtered_techniques if 'kill_chain_phases' in technique and any(tactic['kill_chain_name'] == selected_tactic for tactic in technique['kill_chain_phases'])]
+        filtered_techniques = [technique for technique in filtered_techniques if 'kill_chain_phases' in technique and any(tactic['kill_chain_name'] == selected_tactic for tactic_obj in technique['kill_chain_phases'] for tactic in tactic_obj['kill_chain_name'])]
     
     if selected_technique:
         filtered_techniques = [technique for technique in filtered_techniques if technique['name'] == selected_technique]
