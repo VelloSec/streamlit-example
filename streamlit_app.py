@@ -60,10 +60,17 @@ def main():
 
     # Supplemental Information
     if st.checkbox('Show Supplemental Information'):
-        technique_data = data[data['name'] == selected_technique]
-        st.write("Description:", technique_data['description'].values[0])
-        st.write("Detection:", technique_data['x_mitre_detection'].values[0])
-        st.write("Mitigation:", technique_data['x_mitre_mitigations'].values[0])
+        if selected_technique != 'All':
+            technique_data = data[data['name'] == selected_technique]
+            st.write("Description:", technique_data['description'].values[0])
+            st.write("Detection:", technique_data['x_mitre_detection'].values[0])
+            st.write("Mitigation:", technique_data['x_mitre_mitigations'].values[0])
+        else:
+            tactic_data = data[data['tactic'] == selected_tactic]
+            if not tactic_data.empty:
+                st.write("Tactic Description:", tactic_data['description'].values[0])
+                st.write("Tactic Detection:", tactic_data['x_mitre_detection'].values[0])
+                st.write("Tactic Mitigation:", tactic_data['x_mitre_mitigations'].values[0])
 
 if __name__ == "__main__":
     main()
