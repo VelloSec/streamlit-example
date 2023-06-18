@@ -1,63 +1,50 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
-import requests
 
-# Function to load data from the GitHub repository
-@st.cache
+# Load the data from the GitHub repository
+@st.cache_data(allow_output_mutation=True)
 def load_data():
-    url = 'https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json'
-    data = pd.read_json(url)
-    return data
+    data_url = "https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json"
+    return pd.read_json(data_url)
 
-# Function to process the loaded data and extract relevant information
+# Process the data to extract relevant information
 def process_data(data):
-    techniques = data['objects']
-    software = sorted(list(set(software for technique in techniques for software in technique.get('x_mitre_products', []))))
-    tactics = sorted(list(set(tactic for technique in techniques for tactic in technique.get('x_mitre_tactics', []))))
-    groups = sorted(list(set(group for technique in techniques for group in technique.get('x_mitre_groups', []))))
-    data_sources = sorted(list(set(source for technique in techniques for source in technique.get('x_mitre_data_sources', []))))
-
+    techniques = data["objects"]
+    software = sorted(list(set(technique.get('x_mitre_products', []) for technique in techniques)))
+    tactics = sorted(list(set(tactic for technique in techniques for tactic in technique.get('x_mitre_tactics', [])))))
+    groups = sorted(list(set(technique.get('x_mitre_groups', []) for technique in techniques)))
+    data_sources = sorted(list(set(technique.get('x_mitre_data_sources', []) for technique in techniques)))
     return techniques, software, tactics, groups, data_sources
 
-# Function to filter the techniques based on selected values from the dropdowns
+# Function to update the filtered techniques based on dropdown selections
 def update_filtered_techniques(selected_tactic, selected_technique, selected_group, selected_data_source, selected_software, techniques):
-    filtered_techniques = techniques
-
+    filtered_techniques = techniques.copy()
     if selected_tactic:
-        filtered_techniques = filtered_techniques[filtered_techniques.apply(lambda x: selected_tactic in x.get('x_mitre_tactics', []), axis=1)]
+        filtered_techniques = [technique for technique in filtered_techniques if selected_tactic in technique.get('x_mitre_tactics', [])]
     if selected_technique:
-        filtered_techniques = filtered_techniques[filtered_techniques.apply(lambda x: x.get('name', '') == selected_technique, axis=1)]
+        filtered_techniques = [technique for technique in filtered_techniques if selected_technique == technique.get('name')]
     if selected_group:
-        filtered_techniques = filtered_techniques[filtered_techniques.apply(lambda x: selected_group in x.get('x_mitre_groups', []), axis=1)]
+        filtered_techniques = [technique for technique in filtered_techniques if selected_group in technique.get('x_mitre_groups', [])]
     if selected_data_source:
-        filtered_techniques = filtered_techniques[filtered_techniques.apply(lambda x: selected_data_source in x.get('x_mitre_data_sources', []), axis=1)]
+        filtered_techniques = [technique for technique in filtered_techniques if selected_data_source in technique.get('x_mitre_data_sources', [])]
     if selected_software:
-        filtered_techniques = filtered_techniques[filtered_techniques.apply(lambda x: selected_software in x.get('x_mitre_products', []), axis=1)]
-
+        filtered_techniques = [technique for technique in filtered_techniques if selected_software in technique.get('x_mitre_products', [])]
     return filtered_techniques
 
-# Function to update the dropdown options based on the selected values
+# Function to update the dropdown options and selected values
 def update_dropdowns(selected_tactic, selected_technique, selected_group, selected_data_source, selected_software, tactics, techniques, software, groups, data_sources):
-    if selected_tactic and selected_tactic not in tactics:
-        selected_tactic = None
-    if selected_technique and selected_technique not in [technique.get('name', '') for technique in techniques]:
-        selected_technique = None
-    if selected_group and selected_group not in groups:
-        selected_group = None
-    if selected_data_source and selected_data_source not in data_sources:
-        selected_data_source = None
-    if selected_software and selected_software not in software:
-        selected_software = None
-
+    if selected_tactic is None:
+        selected_tactic = st.sidebar.selectbox("Select a Tactic", tactics)
+    if selected_technique is None:
+        selected_technique = st.sidebar.selectbox("Select a Technique", [technique.get('name', '') for technique in techniques])
+    if selected_group is None:
+        selected_group = st.sidebar.selectbox("Select an APT Group", groups)
+    if selected_data_source is None:
+        selected_data_source = st.sidebar.selectbox("Select a Data Source", data_sources)
+    if selected_software is None:
+        selected_software = st.sidebar.selectbox("Select a Software", software)
     return selected_tactic, selected_technique, selected_group, selected_data_source, selected_software
-
-# Function to filter the dropdown options based on the selected values
-def filter_dropdown(dropdown_label, options, selected_value):
-    filtered_options = options.copy()
-    if selected_value:
-        filtered_options.remove(selected_value)
-    return st.selectbox(dropdown_label, [""] + filtered_options, key=f"{dropdown_label}_dropdown")
 
 # Function to display the technique details in the right panel
 def display_technique_details(technique):
@@ -65,57 +52,57 @@ def display_technique_details(technique):
     st.markdown(technique['description'])
     st.markdown(f"[Mitre ATT&CK Link]({technique['external_references'][0]['url']})")
 
-# Function to display the tactic counts chart
+# Function to display the tactic counts chart in the right panel
 def display_tactic_counts(filtered_techniques):
     tactic_counts = pd.DataFrame([(technique.get('x_mitre_tactics', []), 1) for technique in filtered_techniques], columns=['Tactic', 'Count'])
     chart = alt.Chart(tactic_counts).mark_bar().encode(
-        x='Tactic',
-        y='Count',
-        tooltip=['Tactic', 'Count']
-    ).interactive()
-    st.header("Tactic Counts")
+        x='Count',
+        y=alt.Y('Tactic:N', sort=alt.EncodingSortField(field='Count', op='sum', order='descending')),
+    )
+    st.subheader("Tactic Counts")
     st.altair_chart(chart, use_container_width=True)
 
 # Main function
 def main():
-    st.title("MITRE ATT&CK Navigator")
-
-    # Load the data from the GitHub repository
+    # Load the data
     data = load_data()
 
-    # Process the data to extract relevant information
+    # Process the data
     techniques, software, tactics, groups, data_sources = process_data(data)
 
-    # Search box to filter techniques by name
-    search_text = st.text_input("Search by Technique Name")
-    filtered_techniques = update_filtered_techniques(None, None, None, None, None, techniques)
-    if search_text:
-        filtered_techniques = [technique for technique in filtered_techniques if search_text.lower() in technique.get('name', '').lower()]
+    # Initialize the selected values
+    selected_tactic = None
+    selected_technique = None
+    selected_group = None
+    selected_data_source = None
+    selected_software = None
 
     # Update the dropdown options and selected values
-    selected_tactic = filter_dropdown("Tactic", tactics, None)
-    selected_technique = filter_dropdown("Technique", [technique.get('name', '') for technique in techniques], None)
-    selected_group = filter_dropdown("APT Group", groups, None)
-    selected_data_source = filter_dropdown("Data Source", data_sources, None)
-    selected_software = filter_dropdown("Software", software, None)
-    selected_tactic, selected_technique, selected_group, selected_data_source, selected_software = update_dropdowns(
-        selected_tactic, selected_technique, selected_group, selected_data_source, selected_software, tactics, techniques, software, groups, data_sources
-    )
+    selected_tactic, selected_technique, selected_group, selected_data_source, selected_software = update_dropdowns(selected_tactic, selected_technique, selected_group, selected_data_source, selected_software, tactics, techniques, software, groups, data_sources)
 
-    # Update the filtered techniques based on the selected dropdown values
+    # Update the filtered techniques based on dropdown selections
     filtered_techniques = update_filtered_techniques(selected_tactic, selected_technique, selected_group, selected_data_source, selected_software, techniques)
 
-    # Display the selected technique details
-    if filtered_techniques is not None:
-        st.sidebar.subheader("Selected Technique")
-        selected_technique = st.sidebar.selectbox("Select a Technique", [technique.get('name', '') for technique in filtered_techniques])
-        selected_technique = [technique for technique in filtered_techniques if technique.get('name', '') == selected_technique]
-        if selected_technique:
-            selected_technique = selected_technique[0]
-            display_technique_details(selected_technique)
+    # Display the dropdowns and update the selections
+    with st.sidebar:
+        st.title("Filters")
+        selected_tactic = st.selectbox("Select a Tactic", tactics, index=tactics.index(selected_tactic))
+        selected_technique = st.selectbox("Select a Technique", [technique.get('name', '') for technique in techniques], index=techniques.index(selected_technique))
+        selected_group = st.selectbox("Select an APT Group", groups, index=groups.index(selected_group))
+        selected_data_source = st.selectbox("Select a Data Source", data_sources, index=data_sources.index(selected_data_source))
+        selected_software = st.selectbox("Select a Software", software, index=software.index(selected_software))
+    selected_tactic, selected_technique, selected_group, selected_data_source, selected_software = update_dropdowns(selected_tactic, selected_technique, selected_group, selected_data_source, selected_software, tactics, techniques, software, groups, data_sources)
 
-            # Display the tactic counts chart
-            display_tactic_counts(filtered_techniques)
+    # Update the filtered techniques based on the updated dropdown selections
+    filtered_techniques = update_filtered_techniques(selected_tactic, selected_technique, selected_group, selected_data_source, selected_software, techniques)
 
-if __name__ == "__main__":
+    # Display the filtered techniques
+    if filtered_techniques:
+        st.subheader("Filtered Techniques")
+        for technique in filtered_techniques:
+            display_technique_details(technique)
+        display_tactic_counts(filtered_techniques)
+
+# Run the app
+if __name__ == '__main__':
     main()
