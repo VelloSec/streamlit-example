@@ -3,7 +3,7 @@ import pandas as pd
 import requests
 import json
 
-@st.cache
+@st.cache_data
 def load_data():
     url = 'https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json'
     file = requests.get(url)
@@ -13,17 +13,20 @@ def load_data():
 def process_data(data):
     attack_patterns = [obj for obj in data if obj['type'] == 'attack-pattern']
     df = pd.json_normalize(attack_patterns)
-    
-    platforms = sorted(list(set(platform for sublist in df['x_mitre_platforms'].dropna() for platform in sublist)))
-    tactics = sorted(list(set(tactic for sublist in df['kill_chain_phases'].dropna() for tactic in sublist)))
-    data_sources = sorted(list(set(source for sublist in df['x_mitre_data_sources'].dropna() for source in sublist)))
-    return df, platforms, tactics, data_sources
 
-def apply_filters(df, platforms, tactics, data_sources, search_term):
-    if platforms:
-        df = df[df['x_mitre_platforms'].apply(lambda x: bool(set(platforms) & set(x if x else [])))]
-    if tactics:
-        df = df[df['kill_chain_phases'].apply(lambda x: bool(set(tactics) & set(x if x else [])))]
+    techniques = [obj for obj in data if obj['type'] == 'attack-pattern']
+    df = pd.json_normalize(techniques)
+
+    software = sorted(list(set(software for sublist in df['x_mitre_platforms'].dropna() for software in sublist)))
+    groups = sorted(list(set(group for sublist in df['x_mitre_groups'].dropna() for group in sublist)))
+    data_sources = sorted(list(set(source for sublist in df['x_mitre_data_sources'].dropna() for source in sublist)))
+    return df, software, groups, data_sources
+
+def apply_filters(df, software, groups, data_sources, search_term):
+    if software:
+        df = df[df['x_mitre_platforms'].apply(lambda x: bool(set(software) & set(x if x else [])))]
+    if groups:
+        df = df[df['x_mitre_groups'].apply(lambda x: bool(set(groups) & set(x if x else [])))]
     if data_sources:
         df = df[df['x_mitre_data_sources'].apply(lambda x: bool(set(data_sources) & set(x if x else [])))]
     if search_term:
@@ -34,20 +37,20 @@ def main():
     st.title('Enterprise ATT&CK Matrix Explorer')
 
     data = load_data()
-    df, platforms, tactics, data_sources = process_data(data)
-    
-    st.sidebar.header('Filters')
-    platform_filter = st.sidebar.multiselect('Platform', platforms)
-    tactic_filter = st.sidebar.multiselect('Tactic', tactics)
-    data_source_filter = st.sidebar.multiselect('Data source', data_sources)
-    search_term = st.sidebar.text_input('Search techniques')
+    df, software, groups, data_sources = process_data(data)
 
-    filtered_df = apply_filters(df, platform_filter, tactic_filter, data_source_filter, search_term)
+    st.sidebar.header('Filters')
+    software_filter = st.sidebar.multiselect('Software', software)
+    groups_filter = st.sidebar.multiselect('Groups', groups)
+    data_source_filter = st.sidebar.multiselect('Data Source', data_sources)
+    search_term = st.sidebar.text_input('Search Techniques')
+
+    filtered_df = apply_filters(df, software_filter, groups_filter, data_source_filter, search_term)
 
     if not filtered_df.empty:
-        st.write(filtered_df)
+        st.dataframe(filtered_df[['name', 'description']])
     else:
-        st.write("No data to display. Please adjust filters.")
+        st.write('No results found.')
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
