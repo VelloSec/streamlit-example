@@ -1,89 +1,80 @@
 import streamlit as st
-import requests
 import pandas as pd
-import matplotlib.pyplot as plt
-import altair as alt
 
-# Function to load data from the GitHub repository
-@st.cache(allow_output_mutation=True)
+# Load the data from the GitHub repository
+@st.cache_data(allow_output_mutation=True)
 def load_data():
     url = 'https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json'
-    response = requests.get(url)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        st.error("Failed to load data from the MITRE ATT&CK repository.")
+    data = pd.read_json(url)
+    return data
 
-# Function to process the loaded data
-@st.cache(allow_output_mutation=True)
+# Process the data and extract relevant information
 def process_data(data):
-    techniques = [obj for obj in data['objects'] if obj['type'] == 'attack-pattern']
-    software = sorted(list(set(software for technique in techniques for software in technique.get('x_mitre_products', []))))
-    groups = sorted(list(set(group for technique in techniques for group in technique.get('x_mitre_groups', []))))
-    return techniques, software, groups
+    techniques = data['objects']
+    software = sorted(list(set(technique.get('x_mitre_products', []) for technique in techniques)))
+    tactics = sorted(list(set(technique.get('x_mitre_tactics', []) for technique in techniques)))
+    groups = sorted(list(set(technique.get('x_mitre_groups', []) for technique in techniques)))
+    data_sources = sorted(list(set(technique.get('x_mitre_data_sources', []) for technique in techniques)))
 
-# Function to filter and display the data
-def filter_data(techniques, software, groups, selected_software, selected_group):
-    filtered_techniques = [technique for technique in techniques if
-                           ((selected_software is None) or (selected_software in technique.get('x_mitre_products', []))) and
-                           ((selected_group is None) or (selected_group in technique.get('x_mitre_groups', [])))]
+    return techniques, software, tactics, groups, data_sources
 
-    return filtered_techniques
-
-# Main function
 def main():
-    st.title("MITRE ATT&CK Navigator")
+    st.title("MITRE ATT&CK Navigator Data Analysis")
+
+    # Load the data
     data = load_data()
-    if data is None:
-        return
 
-    techniques, software, groups = process_data(data)
+    # Process the data
+    techniques, software, tactics, groups, data_sources = process_data(data)
 
-    # Enable dynamic filtering of dropdowns
-    selected_software = st.sidebar.selectbox('Select Software', options=[None] + software)
-    selected_group = st.sidebar.selectbox('Select APT Group', options=[None] + groups)
+    # Sidebar filters
+    st.sidebar.header("Filters")
+    selected_software = st.sidebar.selectbox("Software", software)
+    selected_tactic = st.sidebar.selectbox("Tactic", tactics)
+    selected_group = st.sidebar.selectbox("APT Group", groups)
+    selected_data_source = st.sidebar.selectbox("Data Source", data_sources)
 
-    filtered_techniques = filter_data(techniques, software, groups, selected_software, selected_group)
+    # Filter the techniques based on selected filters
+    filtered_techniques = techniques
+    if selected_software:
+        filtered_techniques = [technique for technique in filtered_techniques if
+                               selected_software in technique.get('x_mitre_products', [])]
+    if selected_tactic:
+        filtered_techniques = [technique for technique in filtered_techniques if
+                               selected_tactic in technique.get('x_mitre_tactics', [])]
+    if selected_group:
+        filtered_techniques = [technique for technique in filtered_techniques if
+                               selected_group in technique.get('x_mitre_groups', [])]
+    if selected_data_source:
+        filtered_techniques = [technique for technique in filtered_techniques if
+                               selected_data_source in technique.get('x_mitre_data_sources', [])]
 
-    st.markdown('### Techniques')
-    for technique in filtered_techniques:
-        st.write(f"- **{technique['name']}**")
-        st.write(f"  - ID: {technique['external_references'][0]['external_id']}")
-        st.write(f"  - Description: {technique['description']}")
-        st.write('---')
+    # Show supplemental/related information for selected techniques
+    if filtered_techniques:
+        st.header("Selected Techniques:")
+        for technique in filtered_techniques:
+            st.subheader(technique.get('name', ''))
+            st.write("ID:", technique.get('external_references', [{}])[0].get('external_id', ''))
+            st.write("Description:", technique.get('description', ''))
+            st.write("Tactic:", technique.get('x_mitre_tactics', []))
+            st.write("APT Group:", technique.get('x_mitre_groups', []))
+            st.write("---")
 
-    # Additional Features
+    # Show additional analytics based on filters
+    if filtered_techniques:
+        st.header("Analytics:")
+        tactic_counts = pd.DataFrame([(technique['x_mitre_tactics'], 1) for technique in filtered_techniques],
+                                     columns=['Tactic', 'Count'])
+        st.subheader("Tactic Counts")
+        st.dataframe(tactic_counts)
 
-    # 1. Display count of techniques per software using a bar chart
-    software_counts = pd.DataFrame([(technique['x_mitre_products'], 1) for technique in filtered_techniques], columns=['Software', 'Count'])
-    software_chart = alt.Chart(software_counts).mark_bar().encode(
-        x='Software',
-        y='Count'
-    )
-    st.markdown('### Technique Count per Software')
-    st.altair_chart(software_chart, use_container_width=True)
+        software_counts = pd.DataFrame([(technique['x_mitre_products'], 1) for technique in filtered_techniques],
+                                       columns=['Software', 'Count'])
+        st.subheader("Software Counts")
+        st.dataframe(software_counts)
 
-    # 2. Show a count of techniques per APT group using a bar chart
-    group_counts = pd.DataFrame([(technique['x_mitre_groups'], 1) for technique in filtered_techniques], columns=['Group', 'Count'])
-    group_chart = alt.Chart(group_counts).mark_bar().encode(
-        x='Group',
-        y='Count'
-    )
-    st.markdown('### Technique Count per APT Group')
-    st.altair_chart(group_chart, use_container_width=True)
+    st.sidebar.markdown("---")
+    st.sidebar.text("MITRE ATT&CK Navigator Data Analysis")
 
-    # 3. Display a word cloud of technique descriptions
-    technique_descriptions = " ".join(technique['description'] for technique in filtered_techniques)
-    st.markdown('### Technique Descriptions Word Cloud')
-    st.write(technique_descriptions)
-
-    # 4. Allow searching for specific techniques
-    search_query = st.sidebar.text_input('Search Techniques')
-    if search_query:
-        filtered_techniques = [technique for technique in filtered_techniques if search_query.lower() in technique['name'].lower()]
-
-    if len(filtered_techniques) == 0:
-        st.warning("No techniques found for the selected filters.")
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
