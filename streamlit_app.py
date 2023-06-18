@@ -3,7 +3,7 @@ import pandas as pd
 import altair as alt
 
 # Load the data from the GitHub repository
-@st.cache_data(allow_output_mutation=True)
+@st.cache(allow_output_mutation=True)
 def load_data():
     data_url = "https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json"
     return pd.read_json(data_url)
@@ -31,20 +31,6 @@ def update_filtered_techniques(selected_tactic, selected_technique, selected_gro
     if selected_software:
         filtered_techniques = [technique for technique in filtered_techniques if selected_software in technique.get('x_mitre_products', [])]
     return filtered_techniques
-
-# Function to update the dropdown options and selected values
-def update_dropdowns(selected_tactic, selected_technique, selected_group, selected_data_source, selected_software, tactics, techniques, software, groups, data_sources):
-    if selected_tactic is None:
-        selected_tactic = st.sidebar.selectbox("Select a Tactic", tactics)
-    if selected_technique is None:
-        selected_technique = st.sidebar.selectbox("Select a Technique", [technique.get('name', '') for technique in techniques])
-    if selected_group is None:
-        selected_group = st.sidebar.selectbox("Select an APT Group", groups)
-    if selected_data_source is None:
-        selected_data_source = st.sidebar.selectbox("Select a Data Source", data_sources)
-    if selected_software is None:
-        selected_software = st.sidebar.selectbox("Select a Software", software)
-    return selected_tactic, selected_technique, selected_group, selected_data_source, selected_software
 
 # Function to display the technique details in the right panel
 def display_technique_details(technique):
@@ -77,23 +63,16 @@ def main():
     selected_data_source = None
     selected_software = None
 
-    # Update the dropdown options and selected values
-    selected_tactic, selected_technique, selected_group, selected_data_source, selected_software = update_dropdowns(selected_tactic, selected_technique, selected_group, selected_data_source, selected_software, tactics, techniques, software, groups, data_sources)
-
-    # Update the filtered techniques based on dropdown selections
-    filtered_techniques = update_filtered_techniques(selected_tactic, selected_technique, selected_group, selected_data_source, selected_software, techniques)
-
-    # Display the dropdowns and update the selections
+    # Display the sidebar filters
     with st.sidebar:
         st.title("Filters")
         selected_tactic = st.selectbox("Select a Tactic", tactics, index=tactics.index(selected_tactic))
-        selected_technique = st.selectbox("Select a Technique", [technique.get('name', '') for technique in techniques], index=techniques.index(selected_technique))
+        selected_technique = st.selectbox("Select a Technique", [technique['name'] for technique in techniques], index=techniques.index(selected_technique))
         selected_group = st.selectbox("Select an APT Group", groups, index=groups.index(selected_group))
         selected_data_source = st.selectbox("Select a Data Source", data_sources, index=data_sources.index(selected_data_source))
         selected_software = st.selectbox("Select a Software", software, index=software.index(selected_software))
-    selected_tactic, selected_technique, selected_group, selected_data_source, selected_software = update_dropdowns(selected_tactic, selected_technique, selected_group, selected_data_source, selected_software, tactics, techniques, software, groups, data_sources)
 
-    # Update the filtered techniques based on the updated dropdown selections
+    # Update the filtered techniques based on the dropdown selections
     filtered_techniques = update_filtered_techniques(selected_tactic, selected_technique, selected_group, selected_data_source, selected_software, techniques)
 
     # Display the filtered techniques
