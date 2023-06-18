@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-@st.cache(allow_output_mutation=True)
+@st.cache(show_spinner=False)
 def load_data():
     url = 'https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json'
     data = pd.read_json(url)
@@ -9,10 +9,10 @@ def load_data():
 
 def process_data(data):
     techniques = data['objects']
-    software = sorted(list(set(technique.get('x_mitre_products', []) for technique in techniques)))
-    tactics = sorted(list(set(technique.get('x_mitre_tactics', []) for technique in techniques)))
-    groups = sorted(list(set(technique.get('x_mitre_groups', []) for technique in techniques)))
-    data_sources = sorted(list(set(technique.get('x_mitre_data_sources', []) for technique in techniques)))
+    software = sorted(list(set(software for technique in techniques for software in technique.get('x_mitre_products', []))))
+    tactics = sorted(list(set(tactic for technique in techniques for tactic in technique.get('x_mitre_tactics', []))))
+    groups = sorted(list(set(group for technique in techniques for group in technique.get('x_mitre_groups', []))))
+    data_sources = sorted(list(set(source for technique in techniques for source in technique.get('x_mitre_data_sources', []))))
 
     return techniques, software, tactics, groups, data_sources
 
@@ -22,10 +22,10 @@ def main():
     data = load_data()
     techniques, software, tactics, groups, data_sources = process_data(data)
 
-    selected_software = st.selectbox("Software", software)
-    selected_tactic = st.selectbox("Tactic", tactics)
-    selected_group = st.selectbox("APT Group", groups)
-    selected_data_source = st.selectbox("Data Source", data_sources)
+    selected_software = st.selectbox("Software", software, key='software')
+    selected_tactic = st.selectbox("Tactic", tactics, key='tactic')
+    selected_group = st.selectbox("APT Group", groups, key='group')
+    selected_data_source = st.selectbox("Data Source", data_sources, key='data_source')
 
     filtered_techniques = techniques
     if selected_software:
