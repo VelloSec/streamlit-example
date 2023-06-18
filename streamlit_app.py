@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import altair as alt
 
 # Function to load data from the GitHub repository
-@st.cache
+@st.cache_data(allow_output_mutation=True)
 def load_data():
     url = 'https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json'
     response = requests.get(url)
@@ -13,11 +13,11 @@ def load_data():
     return data
 
 # Function to process the loaded data
-@st.cache
+@st.cache_data(allow_output_mutation=True)
 def process_data(data):
     techniques = [obj for obj in data['objects'] if obj['type'] == 'attack-pattern']
     software = sorted(list(set(software for technique in techniques for software in technique.get('x_mitre_products', []))))
-    tactics = sorted(list(set(tactic for technique in techniques for tactic in technique.get('x_mitre_tactics', []))))
+    tactics = sorted(list(set(tactic for technique in techniques for tactic in technique.get('kill_chain_phases', [])))))
     groups = sorted(list(set(group for technique in techniques for group in technique.get('x_mitre_groups', []))))
     return techniques, software, tactics, groups
 
@@ -25,7 +25,7 @@ def process_data(data):
 def filter_data(techniques, software, tactics, groups, selected_software, selected_tactic, selected_group):
     filtered_techniques = [technique for technique in techniques if
                            (selected_software is None or selected_software in technique.get('x_mitre_products', [])) and
-                           (selected_tactic is None or selected_tactic in technique.get('x_mitre_tactics', [])) and
+                           (selected_tactic is None or selected_tactic in technique.get('kill_chain_phases', []))) and
                            (selected_group is None or selected_group in technique.get('x_mitre_groups', []))]
 
     return filtered_techniques
@@ -53,7 +53,7 @@ def main():
     # Additional Features
 
     # 1. Display count of techniques per tactic using a bar chart
-    tactic_counts = pd.DataFrame([(technique['x_mitre_tactics'], 1) for technique in filtered_techniques], columns=['Tactic', 'Count'])
+    tactic_counts = pd.DataFrame([(technique['kill_chain_phases'], 1) for technique in filtered_techniques], columns=['Tactic', 'Count'])
     tactic_chart = alt.Chart(tactic_counts).mark_bar().encode(
         x='Tactic',
         y='Count'
@@ -62,9 +62,9 @@ def main():
     st.altair_chart(tactic_chart, use_container_width=True)
 
     # 2. Show a table of techniques with their associated software
-    technique_df = pd.DataFrame([(technique['name'], ', '.join(technique.get('x_mitre_products', []))) for technique in filtered_techniques], columns=['Technique', 'Associated Software'])
+    technique_table = pd.DataFrame([(technique['name'], technique['x_mitre_products']) for technique in filtered_techniques], columns=['Technique', 'Software'])
     st.markdown('### Techniques and Associated Software')
-    st.table(technique_df)
+    st.dataframe(technique_table)
 
     # 3. Show a count of techniques per APT group using a bar chart
     group_counts = pd.DataFrame([(technique['x_mitre_groups'], 1) for technique in filtered_techniques], columns=['Group', 'Count'])
